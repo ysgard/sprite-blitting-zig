@@ -1,5 +1,4 @@
 const std = @import("std");
-const rand = std.rand;
 // If we don't want to namespace the SDL functions, use
 // use @cImport({...
 const sdl = @cImport({
@@ -18,69 +17,69 @@ const FALSE: c_int = 0;
 // to c_int in Zig.  Maybe this will get fixed in the future?
 const SDL_WINDOWPOS_UNDEFINED = @bitCast(c_int, sdl.SDL_WINDOWPOS_UNDEFINED_MASK);
 const SDL_TEXTUREACCESS_TARGET = @bitCast(c_int,
-                                          sdl.SDL_TextureAccess.SDL_TEXTUREACCESS_TARGET);
+                                          sdl.SDL_TEXTUREACCESS_TARGET);
 
 // NULL for SDL_Texture
 var null_ptr: ?*sdl.SDL_Texture = null;
 
 pub fn main() anyerror!void {
-    std.debug.warn("starting sprite blitting example\n");
+    std.debug.print("starting sprite blitting example\n", .{});
 
     // Initialize SDL2, and defer quit
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
-        sdl.SDL_Log(c"Unable to initialize SDL: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to initialize SDL: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     }
     defer sdl.SDL_Quit();
 
     // Initialize SDL_Image
     if (sdl.IMG_Init(sdl.IMG_INIT_PNG) == 0) {
-        sdl.SDL_Log(c"Unable to initialize SDL_Image: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to initialize SDL_Image: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     }
     defer sdl.IMG_Quit(); // Remember, FILO for defers, so this gets run before SDL_Quit
 
     // Initialize the window.
-    const window = sdl.SDL_CreateWindow(c"Sprite Blitting",
+    const window = sdl.SDL_CreateWindow("Sprite Blitting",
                                       SDL_WINDOWPOS_UNDEFINED,
                                       SDL_WINDOWPOS_UNDEFINED,
                                       window_width,
                                       window_height,
                                       sdl.SDL_WINDOW_OPENGL) orelse {
-        sdl.SDL_Log(c"Unable to create window: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to create window: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
 
     // Get the renderer
     const renderer = sdl.SDL_CreateRenderer(window, -1, 0) orelse {
-        sdl.SDL_Log(c"Unable to create renderer: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to create renderer: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyRenderer(renderer);
 
     // Load the Spritesheet
-    var sprite_surface = sdl.IMG_Load(c"BrogueFont5.png");
+    var sprite_surface = sdl.IMG_Load("BrogueFont5.png");
     if (sprite_surface == 0) {
-        sdl.SDL_Log(c"Unable to load spritesheet: file not found");
+        sdl.SDL_Log("Unable to load spritesheet: file not found");
         return error.SDLInitializationFailed;
     }
 
     // Convert black pixels to be transparent
     if (sdl.SDL_SetColorKey(sprite_surface, TRUE, 0x000000ff) != 0) {
-        sdl.SDL_Log(c"Unable to set color key: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to set color key: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     }
 
     // Convert the surface to a texture
     var sprite_texture = sdl.SDL_CreateTextureFromSurface(
         renderer, sprite_surface) orelse {
-        sdl.SDL_Log(c"Unable to create texture from surface: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to create texture from surface: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
 
     // Set the blend mode to ADD
     _ = sdl.SDL_SetTextureBlendMode(sprite_texture,
-                                    sdl.SDL_BlendMode.SDL_BLENDMODE_ADD);
+                                    sdl.SDL_BLENDMODE_ADD);
 
     // Create a double buffer
     var buffer = sdl.SDL_CreateTexture(renderer,
@@ -88,15 +87,14 @@ pub fn main() anyerror!void {
                                        SDL_TEXTUREACCESS_TARGET,
                                        window_width,
                                        window_height) orelse {
-        sdl.SDL_Log(c"Unable to create double buffer texture: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("Unable to create double buffer texture: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
 
     // Initialize the RNG
-    var rand_buf: [4]u8 = undefined;
-    try std.os.getRandomBytes(rand_buf[0..]);
-    const seed = std.mem.readIntSliceLittle(u32, rand_buf[0..4]);
-    var rng = rand.DefaultPrng.init(seed);
+    var seed: u64 = undefined;
+    try std.os.getrandom(std.mem.asBytes(&seed));
+    var rng = std.rand.DefaultPrng.init(seed);
 
     // Main loop
     var quit = false;
